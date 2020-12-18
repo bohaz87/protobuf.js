@@ -251,6 +251,12 @@ Root.prototype.loadSync = function loadSync(filename, options) {
  * @override
  */
 Root.prototype.resolveAll = function resolveAll() {
+    for (var i = 0; i < this.deferred.length;)
+        if (tryHandleExtension(this, this.deferred[i]))
+            this.deferred.splice(i, 1);
+        else
+            ++i;
+
     if (this.deferred.length)
         throw Error("unresolvable extensions: " + this.deferred.map(function(field) {
             return "'extend " + field.extend + "' in " + field.parent.fullName;
@@ -291,8 +297,7 @@ Root.prototype._handleAdd = function _handleAdd(object) {
     if (object instanceof Field) {
 
         if (/* an extension field (implies not part of a oneof) */ object.extend !== undefined && /* not already handled */ !object.extensionField)
-            if (!tryHandleExtension(this, object))
-                this.deferred.push(object);
+            this.deferred.push(object);
 
     } else if (object instanceof Enum) {
 
@@ -300,13 +305,6 @@ Root.prototype._handleAdd = function _handleAdd(object) {
             object.parent[object.name] = object.values; // expose enum values as property of its parent
 
     } else if (!(object instanceof OneOf)) /* everything else is a namespace */ {
-
-        if (object instanceof Type) // Try to handle any deferred extensions
-            for (var i = 0; i < this.deferred.length;)
-                if (tryHandleExtension(this, this.deferred[i]))
-                    this.deferred.splice(i, 1);
-                else
-                    ++i;
         for (var j = 0; j < /* initializes */ object.nestedArray.length; ++j) // recurse into the namespace
             this._handleAdd(object._nestedArray[j]);
         if (exposeRe.test(object.name))
